@@ -1,8 +1,10 @@
 "use client";
+export const dynamic = "force-dynamic";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { calculateTDEE, calcMacroGoals, ACTIVITY_LABELS, type ActivityLevel } from "@/lib/tdee";
 import { Moon, Sun, RefreshCw, Trash2, Save } from "lucide-react";
+import Navbar from "@/components/Navbar";
 
 interface Profile {
   name: string | null;
@@ -42,8 +44,11 @@ export default function SettingsPage() {
 
   if (!form) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-10 h-10 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[rgb(var(--bg))]">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="w-10 h-10 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+        </div>
       </div>
     );
   }
@@ -124,6 +129,9 @@ export default function SettingsPage() {
   const macroKcal = (form.proteinGoalG ?? 0) * 4 + (form.carbGoalG ?? 0) * 4 + (form.fatGoalG ?? 0) * 9;
 
   return (
+    <div className="min-h-screen bg-[rgb(var(--bg))]">
+      <Navbar />
+      <main className="max-w-2xl mx-auto px-4 pb-24 pt-4 md:ml-52 md:pl-8">
     <div className="space-y-5 animate-fade-in pt-2">
       <h1 className="text-xl font-bold">Settings</h1>
 
@@ -269,6 +277,8 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+    </div>
+      </main>
     </div>
   );
 }
