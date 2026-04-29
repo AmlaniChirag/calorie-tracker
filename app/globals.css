@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: 250 250 250;
+    --surface: 255 255 255;
+    --border: 229 231 235;
+    --text: 17 24 39;
+    --text-muted: 107 114 128;
+    --ring-track: 229 231 235;
+  }
+  .dark {
+    --bg: 10 10 10;
+    --surface: 24 24 27;
+    --border: 39 39 42;
+    --text: 250 250 250;
+    --text-muted: 161 161 170;
+    --ring-track: 39 39 42;
+  }
+  body {
+    @apply bg-[rgb(var(--bg))] text-[rgb(var(--text))] transition-colors duration-200;
+  }
+}
+
+@layer utilities {
+  .surface {
+    background-color: rgb(var(--surface));
+    border: 1px solid rgb(var(--border));
+  }
+  .text-muted {
+    color: rgb(var(--text-muted));
+  }
+}
+
+/* Smooth ring animation */
+.calorie-ring-progress {
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+  transform: rotate(-90deg);
+}
+
+/* Smooth bar animation */
+.macro-bar-fill {
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Water glass fill */
+.water-glass {
+  transition: background-color 0.3s ease, transform 0.15s ease;
+}
+.water-glass:active {
+  transform: scale(0.92);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 3px; }
+
+/* Modal backdrop */
+.modal-backdrop {
+  backdrop-filter: blur(4px);
+  background-color: rgba(0,0,0,0.5);
+}

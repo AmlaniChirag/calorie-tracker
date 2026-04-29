@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String       @id @default(cuid())
+  clerkId         String       @unique
+  name            String?
+  age             Int?
+  weight          Float?
+  height          Float?
+  gender          String?
+  activityLevel   String?
+  calorieGoal     Int          @default(2000)
+  proteinGoalG    Float?
+  carbGoalG       Float?
+  fatGoalG        Float?
+  useCustomMacros Boolean      @default(false)
+  darkMode        Boolean      @default(false)
+  onboardingDone  Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  meals           Meal[]
+  exercises       Exercise[]
+  waterLogs       WaterLog[]
+  customFoods     CustomFood[]
+}
+
+model Meal {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        String
+  mealType    String
+  foodName    String
+  servingSize Float
+  calories    Float
+  protein     Float
+  carbs       Float
+  fat         Float
+  fiber       Float    @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model Exercise {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date           String
+  name           String
+  caloriesBurned Float
+  createdAt      DateTime @default(now())
+}
+
+model WaterLog {
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date    String
+  glasses Int    @default(0)
+
+  @@unique([userId, date])
+}
+
+model CustomFood {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  calories  Float
+  protein   Float
+  carbs     Float
+  fat       Float
+  fiber     Float    @default(0)
+  createdAt DateTime @default(now())
+}
