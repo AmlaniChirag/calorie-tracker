@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 export interface MealEntry {
   id: string;
+  mealType: string;
   foodName: string;
   servingSize: number;
   calories: number;

@@ -44,7 +44,7 @@ export default function BarcodeScanner({ onFound, onClose }: Props) {
             if (err) return;
 
             const barcode = result.getText();
-            reader.reset();
+            (reader as unknown as { reset: () => void }).reset();
             if (!active) return;
 
             setStatus("loading");
