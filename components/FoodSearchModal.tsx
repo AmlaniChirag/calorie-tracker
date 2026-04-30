@@ -324,9 +324,15 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
         <BarcodeScanner
           onFound={(food) => {
             setShowScanner(false);
+            // Inject barcode food into results so it shows up in the list
+            setResults((prev) => {
+              const alreadyIn = prev.some((f) => f.id === food.id);
+              return alreadyIn ? prev : [food, ...prev];
+            });
             setSelected(food);
             setMultiplier(1);
             setTab("search");
+            setQuery("");
           }}
           onClose={() => setShowScanner(false)}
         />
