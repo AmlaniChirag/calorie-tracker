@@ -22,17 +22,22 @@ export async function GET(req: NextRequest) {
     const p = data.product;
     const n = p.nutriments ?? {};
 
+    const safeNum = (v: unknown, fallback = 0) => {
+      const n = Number(v);
+      return isFinite(n) && n >= 0 ? n : fallback;
+    };
+
     const food = {
       id: `barcode-${barcode}`,
-      name: p.product_name || p.generic_name || "Unknown Product",
-      category: p.categories_tags?.[0]?.replace("en:", "") ?? "Packaged Food",
-      calories: Number(n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0),
-      protein: Number(n.proteins_100g ?? 0),
-      carbs: Number(n.carbohydrates_100g ?? 0),
-      fat: Number(n.fat_100g ?? 0),
-      fiber: Number(n.fiber_100g ?? 0),
-      servingSizeG: Number(p.serving_quantity ?? 100),
-      servingLabel: p.serving_size ?? "1 serving",
+      name: String(p.product_name || p.product_name_en || p.generic_name || "Unknown Product").trim() || "Unknown Product",
+      category: String(p.categories_tags?.[0] ?? "").replace(/^[a-z]{2}:/, "") || "Packaged Food",
+      calories: safeNum(n["energy-kcal_100g"] ?? n["energy-kcal"]),
+      protein: safeNum(n.proteins_100g),
+      carbs: safeNum(n.carbohydrates_100g),
+      fat: safeNum(n.fat_100g),
+      fiber: safeNum(n.fiber_100g),
+      servingSizeG: safeNum(p.serving_quantity, 100) || 100,
+      servingLabel: String(p.serving_size || "1 serving").slice(0, 50),
     };
 
     return NextResponse.json(food);

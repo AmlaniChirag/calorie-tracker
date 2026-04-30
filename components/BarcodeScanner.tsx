@@ -16,6 +16,7 @@ export default function BarcodeScanner({ onFound, onClose }: Props) {
 
   useEffect(() => {
     let active = true;
+    let hasDecoded = false;
 
     const start = async () => {
       try {
@@ -40,21 +41,25 @@ export default function BarcodeScanner({ onFound, onClose }: Props) {
           backCamera.deviceId,
           videoRef.current!,
           async (result, err) => {
-            if (!result || !active) return;
+            if (!result || !active || hasDecoded) return;
             if (err) return;
 
+            hasDecoded = true;
             const barcode = result.getText();
-            (reader as unknown as { reset: () => void }).reset();
-            if (!active) return;
 
             setStatus("loading");
             try {
               const res = await fetch(`/api/food/barcode?barcode=${encodeURIComponent(barcode)}`);
               if (!res.ok) throw new Error("Product not found in database");
               const food = await res.json();
-              if (active) onFound(food);
+              if (active) {
+                try { (reader as unknown as { reset: () => void }).reset(); } catch { /* ignore */ }
+                readerRef.current = null;
+                onFound(food);
+              }
             } catch (e) {
               if (active) {
+                hasDecoded = false;
                 setErrorMsg(e instanceof Error ? e.message : "Product not found");
                 setStatus("error");
               }
@@ -72,7 +77,8 @@ export default function BarcodeScanner({ onFound, onClose }: Props) {
     start();
     return () => {
       active = false;
-      readerRef.current?.reset();
+      try { readerRef.current?.reset(); } catch { /* ignore */ }
+      readerRef.current = null;
     };
   }, [onFound]);
 
