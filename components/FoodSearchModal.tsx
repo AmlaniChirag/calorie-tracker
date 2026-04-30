@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Search, ScanLine, Plus, Trash2, Star, Clock } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, Search, ScanLine, Plus, Trash2, Star, Clock, Zap } from "lucide-react";
 import { BUILT_IN_FOODS, searchFoods, type FoodItem } from "@/lib/foods";
 import BarcodeScanner from "./BarcodeScanner";
+import TemplateTab, { type TemplateItem } from "./TemplateTab";
 
 interface Props {
   mealType: string;
@@ -14,13 +15,12 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = "search" | "custom" | "add-custom";
+type Tab = "search" | "saved" | "templates" | "add-custom";
 type Unit = "g" | "ml" | "piece" | "cup" | "tbsp" | "tsp" | "oz";
 
 const UNIT_TO_G: Record<Unit, number> = {
   g: 1, ml: 1, cup: 240, tbsp: 15, tsp: 5, oz: 28.35, piece: 1,
 };
-
 const UNIT_OPTIONS: Unit[] = ["g", "ml", "piece", "cup", "tbsp", "tsp", "oz"];
 
 function calcNutrition(food: FoodItem, grams: number) {
@@ -34,9 +34,16 @@ function calcNutrition(food: FoodItem, grams: number) {
   };
 }
 
-function getGrams(qty: number, unit: Unit, servingSizeG: number): number {
-  if (unit === "piece") return qty * servingSizeG;
-  return qty * UNIT_TO_G[unit];
+function getGrams(qty: number, unit: Unit, servingSizeG: number) {
+  return unit === "piece" ? qty * servingSizeG : qty * UNIT_TO_G[unit];
+}
+
+function loadFavs(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem("favFoods_v1") || "[]")); }
+  catch { return new Set(); }
+}
+function saveFavs(favs: Set<string>) {
+  localStorage.setItem("favFoods_v1", JSON.stringify([...favs]));
 }
 
 export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Props) {
@@ -45,6 +52,7 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
   const [results, setResults] = useState<FoodItem[]>(BUILT_IN_FOODS.slice(0, 20));
   const [customFoods, setCustomFoods] = useState<FoodItem[]>([]);
   const [recentFoods, setRecentFoods] = useState<FoodItem[]>([]);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<FoodItem | null>(null);
   const [qty, setQty] = useState(100);
   const [unit, setUnit] = useState<Unit>("g");
@@ -52,15 +60,29 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
   const [adding, setAdding] = useState(false);
   const [scanToast, setScanToast] = useState("");
 
+  // Quick-add state
+  const [showQA, setShowQA] = useState(false);
+  const [qa, setQa] = useState({ name: "Quick Add", calories: "", protein: "", carbs: "", fat: "" });
+  const [qaAdding, setQaAdding] = useState(false);
+
   // Custom food form
-  const [cf, setCf] = useState({ name: "", calories: "", protein: "", carbs: "", fat: "", fiber: "", servingSize: "100", servingUnit: "g" as Unit });
+  const [cf, setCf] = useState({ name: "", calories: "", protein: "", carbs: "", fat: "", fiber: "" });
   const [cfSaving, setCfSaving] = useState(false);
+
+  // Load persistent data
+  useEffect(() => {
+    setFavorites(loadFavs());
+    try {
+      const raw = localStorage.getItem("recentFoods_v1");
+      if (raw) setRecentFoods(JSON.parse(raw));
+    } catch { /* silent */ }
+  }, []);
 
   const loadCustomFoods = useCallback(async () => {
     try {
       const res = await fetch("/api/food/custom");
       const data = await res.json();
-      const mapped: FoodItem[] = data.map((f: { id: string; name: string; calories: number; protein: number; carbs: number; fat: number; fiber: number }) => ({
+      setCustomFoods(data.map((f: { id: string; name: string; calories: number; protein: number; carbs: number; fat: number; fiber: number }) => ({
         id: `custom-${f.id}`,
         customId: f.id,
         name: f.name,
@@ -73,26 +95,24 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
         servingSizeG: 100,
         servingLabel: "100g",
         isCustom: true,
-      }));
-      setCustomFoods(mapped);
+      })));
     } catch { /* silent */ }
   }, []);
 
   useEffect(() => { loadCustomFoods(); }, [loadCustomFoods]);
 
-  // Load recent foods from localStorage
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("recentFoods");
-      if (raw) setRecentFoods(JSON.parse(raw));
-    } catch { /* silent */ }
-  }, []);
-
-  useEffect(() => {
-    if (tab === "search") {
-      setResults(searchFoods(query, customFoods));
-    }
+    if (tab === "search") setResults(searchFoods(query, customFoods));
   }, [query, tab, customFoods]);
+
+  const toggleFav = (foodId: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      next.has(foodId) ? next.delete(foodId) : next.add(foodId);
+      saveFavs(next);
+      return next;
+    });
+  };
 
   const selectFood = (food: FoodItem) => {
     setSelected(food);
@@ -100,33 +120,58 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
     setUnit("g");
   };
 
+  // Build ordered display list: favorites → recents → rest
+  const displayList = (() => {
+    if (query) return results;
+    const pool = [...customFoods, ...BUILT_IN_FOODS];
+    const favItems = pool.filter((f) => favorites.has(f.id));
+    const recentItems = recentFoods.filter((f) => !favorites.has(f.id));
+    const rest = BUILT_IN_FOODS.slice(0, 20).filter(
+      (f) => !favorites.has(f.id) && !recentFoods.some((r) => r.id === f.id)
+    );
+    return [...favItems, ...recentItems, ...rest];
+  })();
+
   const grams = selected ? getGrams(qty, unit, selected.servingSizeG) : 0;
   const nutrition = selected ? calcNutrition(selected, grams) : null;
+  const macroTotal = nutrition ? nutrition.protein * 4 + nutrition.carbs * 4 + nutrition.fat * 9 : 0;
 
   const handleAdd = async () => {
     if (!selected || !nutrition) return;
     setAdding(true);
     try {
       await onAdd({ mealType, date, foodName: selected.name, servingSize: grams, ...nutrition });
-      // Save to recent foods
+      // Save to recents
       try {
-        const recent: FoodItem[] = JSON.parse(localStorage.getItem("recentFoods") || "[]");
-        const updated = [selected, ...recent.filter((f) => f.id !== selected.id)].slice(0, 8);
-        localStorage.setItem("recentFoods", JSON.stringify(updated));
+        const updated = [selected, ...recentFoods.filter((f) => f.id !== selected.id)].slice(0, 8);
+        localStorage.setItem("recentFoods_v1", JSON.stringify(updated));
       } catch { /* silent */ }
       onClose();
-    } finally {
-      setAdding(false);
-    }
+    } finally { setAdding(false); }
+  };
+
+  const handleQuickAdd = async () => {
+    if (!qa.calories) return;
+    setQaAdding(true);
+    try {
+      await onAdd({
+        mealType, date,
+        foodName: qa.name || "Quick Add",
+        servingSize: 1,
+        calories: Number(qa.calories),
+        protein: Number(qa.protein || 0),
+        carbs: Number(qa.carbs || 0),
+        fat: Number(qa.fat || 0),
+        fiber: 0,
+      });
+      onClose();
+    } finally { setQaAdding(false); }
   };
 
   const handleSaveCustom = async () => {
     if (!cf.name || !cf.calories) return;
     setCfSaving(true);
     try {
-      const servingSizeG = cf.servingUnit === "piece"
-        ? Number(cf.servingSize) || 100
-        : (Number(cf.servingSize) || 100) * UNIT_TO_G[cf.servingUnit];
       await fetch("/api/food/custom", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -139,12 +184,10 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
           fiber: Number(cf.fiber || 0),
         }),
       });
-      setCf({ name: "", calories: "", protein: "", carbs: "", fat: "", fiber: "", servingSize: "100", servingUnit: "g" });
+      setCf({ name: "", calories: "", protein: "", carbs: "", fat: "", fiber: "" });
       await loadCustomFoods();
-      setTab("custom");
-    } finally {
-      setCfSaving(false);
-    }
+      setTab("saved");
+    } finally { setCfSaving(false); }
   };
 
   const handleDeleteCustom = async (customId: string) => {
@@ -153,22 +196,18 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
   };
 
   const handleBarcodeFound = async (food: FoodItem) => {
-    // Auto-save scanned food to My Foods
+    // Auto-save to My Foods
     try {
       await fetch("/api/food/custom", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: food.name,
-          calories: food.calories,
-          protein: food.protein,
-          carbs: food.carbs,
-          fat: food.fat,
-          fiber: food.fiber,
+          name: food.name, calories: food.calories, protein: food.protein,
+          carbs: food.carbs, fat: food.fat, fiber: food.fiber,
         }),
       });
       await loadCustomFoods();
-      setScanToast(`"${food.name.slice(0, 30)}" saved to My Foods`);
+      setScanToast(`"${food.name.slice(0, 28)}" saved to My Foods`);
       setTimeout(() => setScanToast(""), 3000);
     } catch { /* non-critical */ }
 
@@ -179,14 +218,28 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
     setQuery("");
   };
 
-  const macroTotal = nutrition ? nutrition.protein * 4 + nutrition.carbs * 4 + nutrition.fat * 9 : 0;
-  const macroBarP = macroTotal > 0 ? (nutrition!.protein * 4 / macroTotal) * 100 : 33;
-  const macroBarC = macroTotal > 0 ? (nutrition!.carbs * 4 / macroTotal) * 100 : 34;
-  const macroBarF = macroTotal > 0 ? (nutrition!.fat * 9 / macroTotal) * 100 : 33;
+  const handleApplyTemplate = async (items: TemplateItem[]) => {
+    for (const item of items) {
+      await onAdd({
+        mealType, date,
+        foodName: item.foodName,
+        servingSize: item.grams,
+        calories: item.calories,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+        fiber: item.fiber,
+      });
+    }
+    onClose();
+  };
 
-  const displayList = tab === "search"
-    ? (query ? results : (recentFoods.length > 0 ? [...recentFoods, ...BUILT_IN_FOODS.slice(0, 15)] : results))
-    : [];
+  const TABS: { key: Tab; label: string }[] = [
+    { key: "search", label: "Search" },
+    { key: "saved", label: "My Foods" },
+    { key: "templates", label: "Templates" },
+    { key: "add-custom", label: "+ Custom" },
+  ];
 
   return (
     <>
@@ -196,72 +249,153 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-[rgb(var(--border))]">
             <h2 className="font-semibold capitalize">Add to {mealType}</h2>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setShowScanner(true)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 text-green-600" title="Scan barcode">
-                <ScanLine size={18} />
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => { setShowQA((v) => !v); setSelected(null); }}
+                title="Quick add calories"
+                className={`p-2 rounded-xl text-sm transition-colors ${showQA ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600" : "hover:bg-gray-100 dark:hover:bg-zinc-800 text-amber-500"}`}
+              >
+                <Zap size={17} />
+              </button>
+              <button onClick={() => setShowScanner(true)} title="Scan barcode"
+                className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 text-green-600">
+                <ScanLine size={17} />
               </button>
               <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800">
-                <X size={18} />
+                <X size={17} />
               </button>
             </div>
           </div>
+
+          {/* Quick Add panel */}
+          {showQA && (
+            <div className="px-4 py-3 border-b border-[rgb(var(--border))] bg-amber-50/50 dark:bg-amber-900/10 space-y-3">
+              <p className="text-xs font-semibold text-amber-600 flex items-center gap-1"><Zap size={12} /> Quick Add</p>
+              <input
+                type="text"
+                placeholder='Name (optional, e.g. "Home cooked dal")'
+                value={qa.name}
+                onChange={(e) => setQa((p) => ({ ...p, name: e.target.value }))}
+                className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { key: "calories", label: "Calories*", placeholder: "500" },
+                  { key: "protein", label: "Protein g", placeholder: "20" },
+                  { key: "carbs", label: "Carbs g", placeholder: "60" },
+                  { key: "fat", label: "Fat g", placeholder: "15" },
+                ].map(({ key, label, placeholder }) => (
+                  <div key={key}>
+                    <label className="block text-xs text-muted mb-1">{label}</label>
+                    <input
+                      type="number"
+                      placeholder={placeholder}
+                      value={qa[key as keyof typeof qa]}
+                      onChange={(e) => setQa((p) => ({ ...p, [key]: e.target.value }))}
+                      className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400 text-center"
+                    />
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={handleQuickAdd}
+                disabled={!qa.calories || qaAdding}
+                className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+              >
+                <Plus size={15} />
+                {qaAdding ? "Adding..." : `Log ${qa.calories || 0} kcal`}
+              </button>
+            </div>
+          )}
 
           {/* Scan toast */}
           {scanToast && (
             <div className="mx-4 mt-2 px-3 py-2 bg-green-500/10 border border-green-500/30 rounded-xl text-xs text-green-600 flex items-center gap-2">
-              <ScanLine size={13} /> {scanToast}
+              <ScanLine size={12} /> {scanToast}
             </div>
           )}
 
           {/* Tabs */}
-          <div className="flex border-b border-[rgb(var(--border))] px-4">
-            {(["search", "custom", "add-custom"] as Tab[]).map((t) => (
-              <button key={t} onClick={() => { setTab(t); setSelected(null); }}
-                className={`py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${tab === t ? "border-green-500 text-green-600" : "border-transparent text-muted"}`}>
-                {t === "search" ? "Search" : t === "custom" ? "My Foods" : "+ Custom"}
+          <div className="flex border-b border-[rgb(var(--border))] px-2">
+            {TABS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => { setTab(key); setSelected(null); setShowQA(false); }}
+                className={`flex-1 py-2.5 px-1 text-xs font-medium border-b-2 transition-colors ${
+                  tab === key ? "border-green-500 text-green-600" : "border-transparent text-muted"
+                }`}
+              >
+                {label}
               </button>
             ))}
           </div>
 
+          {/* Tab content */}
           <div className="flex-1 overflow-y-auto">
-            {/* ── Search tab ── */}
+
+            {/* ── Search ── */}
             {tab === "search" && (
               <div className="flex flex-col h-full">
                 <div className="p-3 border-b border-[rgb(var(--border))]">
                   <div className="flex items-center gap-2 bg-gray-100 dark:bg-zinc-800 rounded-xl px-3 py-2">
-                    <Search size={16} className="text-muted flex-shrink-0" />
-                    <input autoFocus type="text" placeholder="Search foods (roti, chicken, banana)..."
-                      value={query} onChange={(e) => setQuery(e.target.value)}
-                      className="bg-transparent flex-1 text-sm outline-none placeholder:text-muted" />
-                    {query && <button onClick={() => setQuery("")} className="text-muted"><X size={14} /></button>}
+                    <Search size={15} className="text-muted flex-shrink-0" />
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="Search foods (roti, chicken, amul butter)..."
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      className="bg-transparent flex-1 text-sm outline-none placeholder:text-muted"
+                    />
+                    {query && <button onClick={() => setQuery("")} className="text-muted"><X size={13} /></button>}
                   </div>
                 </div>
 
-                {!query && recentFoods.length > 0 && (
-                  <div className="px-4 pt-3 pb-1">
-                    <p className="text-xs font-medium text-muted flex items-center gap-1 mb-2"><Clock size={12} /> Recent</p>
+                {/* Section header */}
+                {!query && (
+                  <div className="px-4 pt-2.5 pb-1 flex items-center gap-2">
+                    {favorites.size > 0 && <span className="text-xs text-muted flex items-center gap-1"><Star size={10} className="fill-yellow-400 text-yellow-400" /> Favorites first</span>}
+                    {recentFoods.length > 0 && <span className="text-xs text-muted flex items-center gap-1"><Clock size={10} /> Then recent</span>}
                   </div>
                 )}
 
                 <div className="flex-1 overflow-y-auto">
                   {displayList.map((food, i) => (
-                    <button key={`${food.id}-${i}`} onClick={() => selectFood(food)}
-                      className={`w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-800/60 transition-colors border-b border-[rgb(var(--border))] ${selected?.id === food.id ? "bg-green-50 dark:bg-green-950/30" : ""}`}>
-                      <div className="text-left">
-                        <p className="text-sm font-medium flex items-center gap-1.5">
-                          {!query && recentFoods.some((r) => r.id === food.id) && <Clock size={11} className="text-muted" />}
-                          {food.name}
-                        </p>
-                        <p className="text-xs text-muted">{food.category} · {food.servingLabel}</p>
-                      </div>
-                      <div className="text-right text-xs text-muted">
-                        <p className="font-semibold text-sm text-[rgb(var(--text))]">{Math.round(food.calories * food.servingSizeG / 100)} kcal</p>
-                        <p>P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
-                      </div>
-                    </button>
+                    <div
+                      key={`${food.id}-${i}`}
+                      className={`flex items-center gap-2 px-4 py-3 border-b border-[rgb(var(--border))] transition-colors ${selected?.id === food.id ? "bg-green-50 dark:bg-green-950/30" : "hover:bg-gray-50 dark:hover:bg-zinc-800/60"}`}
+                    >
+                      <button
+                        onClick={() => toggleFav(food.id)}
+                        className="flex-shrink-0 p-0.5"
+                        title={favorites.has(food.id) ? "Remove from favorites" : "Add to favorites"}
+                      >
+                        <Star
+                          size={15}
+                          className={favorites.has(food.id) ? "fill-yellow-400 text-yellow-400" : "text-gray-300 dark:text-zinc-600"}
+                        />
+                      </button>
+                      <button className="flex-1 flex items-center justify-between text-left" onClick={() => selectFood(food)}>
+                        <div>
+                          <p className="text-sm font-medium flex items-center gap-1.5">
+                            {!query && recentFoods.some((r) => r.id === food.id) && !favorites.has(food.id) && (
+                              <Clock size={11} className="text-muted" />
+                            )}
+                            {food.name}
+                          </p>
+                          <p className="text-xs text-muted">{food.category} · {food.servingLabel}</p>
+                        </div>
+                        <div className="text-right text-xs text-muted flex-shrink-0 ml-2">
+                          <p className="font-semibold text-sm text-[rgb(var(--text))]">
+                            {Math.round(food.calories * food.servingSizeG / 100)} kcal
+                          </p>
+                          <p>P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                        </div>
+                      </button>
+                    </div>
                   ))}
                   {query && results.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-12 text-muted text-sm gap-2">
+                    <div className="flex flex-col items-center py-12 text-muted text-sm gap-2">
                       <span className="text-3xl">🔍</span>
                       <p>No results for &ldquo;{query}&rdquo;</p>
                       <button onClick={() => setTab("add-custom")} className="text-green-600 underline text-xs">Add as custom food</button>
@@ -271,15 +405,15 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
               </div>
             )}
 
-            {/* ── My Foods tab ── */}
-            {tab === "custom" && (
-              <div className="flex flex-col">
+            {/* ── My Foods ── */}
+            {tab === "saved" && (
+              <div>
                 {customFoods.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted text-sm gap-2">
+                  <div className="flex flex-col items-center py-12 text-muted text-sm gap-2">
                     <span className="text-3xl">🍽️</span>
-                    <p>No custom foods yet</p>
+                    <p>No saved foods yet</p>
                     <p className="text-xs">Scanned barcodes auto-save here</p>
-                    <button onClick={() => setTab("add-custom")} className="text-green-600 underline text-xs mt-1">Add your first food</button>
+                    <button onClick={() => setTab("add-custom")} className="text-green-600 underline text-xs mt-1">Add custom food</button>
                   </div>
                 ) : customFoods.map((food) => (
                   <div key={food.id} className={`flex items-center justify-between px-4 py-3 border-b border-[rgb(var(--border))] hover:bg-gray-50 dark:hover:bg-zinc-800/60 ${selected?.id === food.id ? "bg-green-50 dark:bg-green-950/30" : ""}`}>
@@ -289,7 +423,7 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
                     </button>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold">{food.calories} kcal</span>
-                      <button onClick={() => food.customId && handleDeleteCustom(food.customId)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">
+                      <button onClick={() => food.customId && handleDeleteCustom(food.customId)} className="p-1.5 text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -298,23 +432,28 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
               </div>
             )}
 
-            {/* ── Add Custom tab ── */}
+            {/* ── Templates ── */}
+            {tab === "templates" && (
+              <TemplateTab customFoods={customFoods} onApplyAll={handleApplyTemplate} />
+            )}
+
+            {/* ── Add Custom ── */}
             {tab === "add-custom" && (
               <div className="p-4 space-y-3">
-                <p className="text-xs text-muted">Nutrition values per 100g / 100ml of the food.</p>
+                <p className="text-xs text-muted">All values per 100g / 100ml.</p>
                 {[
-                  { key: "name", label: "Food Name", type: "text", placeholder: "e.g. Milld Atta" },
-                  { key: "calories", label: "Calories (kcal per 100g)", type: "number", placeholder: "e.g. 340" },
-                  { key: "protein", label: "Protein (g)", type: "number", placeholder: "e.g. 12" },
-                  { key: "carbs", label: "Carbs (g)", type: "number", placeholder: "e.g. 65" },
+                  { key: "name", label: "Food Name", type: "text", placeholder: "e.g. Milld High Protein Atta" },
+                  { key: "calories", label: "Calories (kcal)", type: "number", placeholder: "e.g. 340" },
+                  { key: "protein", label: "Protein (g)", type: "number", placeholder: "e.g. 14" },
+                  { key: "carbs", label: "Carbs (g)", type: "number", placeholder: "e.g. 60" },
                   { key: "fat", label: "Fat (g)", type: "number", placeholder: "e.g. 2.5" },
-                  { key: "fiber", label: "Fiber (g)", type: "number", placeholder: "e.g. 3" },
+                  { key: "fiber", label: "Fiber (g)", type: "number", placeholder: "e.g. 4" },
                 ].map(({ key, label, type, placeholder }) => (
                   <div key={key}>
                     <label className="block text-xs font-medium mb-1">{label}</label>
                     <input type={type} placeholder={placeholder}
                       value={cf[key as keyof typeof cf]}
-                      onChange={(e) => setCf((prev) => ({ ...prev, [key]: e.target.value }))}
+                      onChange={(e) => setCf((p) => ({ ...p, [key]: e.target.value }))}
                       className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-400" />
                   </div>
                 ))}
@@ -327,43 +466,45 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
           </div>
 
           {/* ── Serving + Add panel ── */}
-          {selected && nutrition && (tab === "search" || tab === "custom") && (
+          {selected && nutrition && (tab === "search" || tab === "saved") && (
             <div className="border-t border-[rgb(var(--border))] p-4 space-y-3 bg-[rgb(var(--surface))]">
-              {/* Food name + calories */}
+              {/* Name + calories */}
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sm truncate max-w-[200px]">{selected.name}</p>
-                  <p className="text-xs text-muted">{Math.round(grams)}g · {selected.servingLabel} = {selected.servingSizeG}g</p>
+                  <p className="text-xs text-muted">{Math.round(grams)}g logged</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-green-600 text-lg">{nutrition.calories} kcal</p>
+                  <p className="font-bold text-green-600 text-lg leading-tight">{nutrition.calories} kcal</p>
                   <p className="text-xs text-muted">P:{nutrition.protein}g C:{nutrition.carbs}g F:{nutrition.fat}g</p>
                 </div>
               </div>
 
               {/* Macro bar */}
-              <div className="flex h-1.5 rounded-full overflow-hidden gap-0.5">
-                <div className="bg-blue-400 rounded-full transition-all" style={{ width: `${macroBarP}%` }} />
-                <div className="bg-yellow-400 rounded-full transition-all" style={{ width: `${macroBarC}%` }} />
-                <div className="bg-red-400 rounded-full transition-all" style={{ width: `${macroBarF}%` }} />
-              </div>
-              <div className="flex gap-3 text-xs text-muted justify-center">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-400 rounded-full" />Protein</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-yellow-400 rounded-full" />Carbs</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-red-400 rounded-full" />Fat</span>
-              </div>
+              {macroTotal > 0 && (
+                <>
+                  <div className="flex h-1.5 rounded-full overflow-hidden gap-0.5">
+                    <div className="bg-blue-400 rounded-full transition-all" style={{ width: `${(nutrition.protein * 4 / macroTotal) * 100}%` }} />
+                    <div className="bg-yellow-400 rounded-full transition-all" style={{ width: `${(nutrition.carbs * 4 / macroTotal) * 100}%` }} />
+                    <div className="bg-red-400 rounded-full transition-all" style={{ width: `${(nutrition.fat * 9 / macroTotal) * 100}%` }} />
+                  </div>
+                  <div className="flex gap-3 text-xs text-muted justify-center -mt-1">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-400 rounded-full" />P</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-yellow-400 rounded-full" />C</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-red-400 rounded-full" />F</span>
+                  </div>
+                </>
+              )}
 
               {/* Qty + Unit */}
               <div>
                 <label className="text-xs font-medium text-muted block mb-1.5">Serving size</label>
                 <div className="flex gap-2">
                   <input
-                    type="number"
-                    min="0"
-                    step="any"
+                    type="number" min="0" step="any"
                     value={qty}
                     onChange={(e) => setQty(Math.max(0, Number(e.target.value)))}
-                    className="w-24 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-400 text-center font-semibold"
+                    className="w-20 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-400 text-center font-semibold"
                   />
                   <div className="flex gap-1 flex-wrap flex-1">
                     {UNIT_OPTIONS.map((u) => (
@@ -390,7 +531,7 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
               <button onClick={handleAdd} disabled={adding || grams <= 0}
                 className="w-full py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
                 <Plus size={18} />
-                {adding ? "Adding..." : `Add ${Math.round(grams)}g of ${selected.name.split(" ").slice(0, 3).join(" ")}`}
+                {adding ? "Adding..." : `Add ${Math.round(grams)}g — ${nutrition.calories} kcal`}
               </button>
             </div>
           )}
