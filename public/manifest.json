@@ -1,0 +1,20 @@
+{
+  "name": "CalTrack — Calorie & Macro Tracker",
+  "short_name": "CalTrack",
+  "description": "Track calories, macros, water and workouts. Built for Indian & global food lovers.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0a",
+  "theme_color": "#22c55e",
+  "icons": [
+    { "src": "/api/icon/192", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/api/icon/512", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/api/icon/512", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "categories": ["health", "fitness", "food"],
+  "shortcuts": [
+    { "name": "Log Meal", "url": "/dashboard", "description": "Quick-add today's meal" },
+    { "name": "History", "url": "/history", "description": "View your food history" }
+  ]
+}
