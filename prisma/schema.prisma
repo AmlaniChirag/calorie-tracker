@@ -23,6 +23,7 @@ model User {
   useCustomMacros Boolean      @default(false)
   darkMode        Boolean      @default(false)
   onboardingDone  Boolean      @default(false)
+  showWater       Boolean      @default(true)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   meals           Meal[]

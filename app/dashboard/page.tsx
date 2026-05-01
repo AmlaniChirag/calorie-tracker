@@ -19,6 +19,7 @@ interface UserProfile {
   useCustomMacros: boolean;
   onboardingDone: boolean;
   darkMode: boolean;
+  showWater: boolean;
 }
 
 const MEAL_TYPES = [
@@ -174,7 +175,7 @@ export default function DashboardPage() {
       />
 
       {/* Water Tracker */}
-      <WaterTracker glasses={waterGlasses} onChange={handleWater} />
+      {profile.showWater && <WaterTracker glasses={waterGlasses} onChange={handleWater} />}
 
       {/* Meal Sections */}
       <div className="space-y-3">
