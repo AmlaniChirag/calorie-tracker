@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       useCustomMacros: body.useCustomMacros !== undefined ? Boolean(body.useCustomMacros) : dbUser.useCustomMacros,
       darkMode: body.darkMode !== undefined ? Boolean(body.darkMode) : dbUser.darkMode,
       onboardingDone: body.onboardingDone !== undefined ? Boolean(body.onboardingDone) : dbUser.onboardingDone,
+      showWater: body.showWater !== undefined ? Boolean(body.showWater) : dbUser.showWater,
     },
   });
 

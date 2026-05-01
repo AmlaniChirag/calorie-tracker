@@ -59,6 +59,9 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
   const [showScanner, setShowScanner] = useState(false);
   const [adding, setAdding] = useState(false);
   const [scanToast, setScanToast] = useState("");
+  // Rename dialog after barcode scan
+  const [renameFood, setRenameFood] = useState<FoodItem | null>(null);
+  const [customName, setCustomName] = useState("");
 
   // Quick-add state
   const [showQA, setShowQA] = useState(false);
@@ -195,25 +198,35 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
     await loadCustomFoods();
   };
 
-  const handleBarcodeFound = async (food: FoodItem) => {
-    // Auto-save to My Foods
+  const handleBarcodeFound = (food: FoodItem) => {
+    setShowScanner(false);
+    // Show rename dialog before saving/selecting
+    setRenameFood(food);
+    setCustomName(food.name);
+  };
+
+  const confirmRename = async () => {
+    if (!renameFood) return;
+    const finalFood: FoodItem = { ...renameFood, name: customName.trim() || renameFood.name };
+
+    // Auto-save to My Foods with final name
     try {
       await fetch("/api/food/custom", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: food.name, calories: food.calories, protein: food.protein,
-          carbs: food.carbs, fat: food.fat, fiber: food.fiber,
+          name: finalFood.name, calories: finalFood.calories, protein: finalFood.protein,
+          carbs: finalFood.carbs, fat: finalFood.fat, fiber: finalFood.fiber,
         }),
       });
       await loadCustomFoods();
-      setScanToast(`"${food.name.slice(0, 28)}" saved to My Foods`);
+      setScanToast(`"${finalFood.name.slice(0, 28)}" saved to My Foods`);
       setTimeout(() => setScanToast(""), 3000);
     } catch { /* non-critical */ }
 
-    setShowScanner(false);
-    setResults((prev) => prev.some((f) => f.id === food.id) ? prev : [food, ...prev]);
-    selectFood(food);
+    setRenameFood(null);
+    setResults((prev) => prev.some((f) => f.id === finalFood.id) ? prev : [finalFood, ...prev]);
+    selectFood(finalFood);
     setTab("search");
     setQuery("");
   };
@@ -540,6 +553,51 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
 
       {showScanner && (
         <BarcodeScanner onFound={handleBarcodeFound} onClose={() => setShowScanner(false)} />
+      )}
+
+      {/* Rename dialog after barcode scan */}
+      {renameFood && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+          <div className="surface rounded-2xl w-full max-w-sm p-5 space-y-4 animate-slide-up shadow-2xl">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2">
+                <ScanLine size={16} className="text-green-500" /> Product Found
+              </h3>
+              <p className="text-xs text-muted mt-1">
+                {renameFood.calories} kcal · P:{renameFood.protein}g C:{renameFood.carbs}g F:{renameFood.fat}g per 100g
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1.5">
+                Product name — edit if needed
+              </label>
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && confirmRename()}
+                autoFocus
+                className="w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg))] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setRenameFood(null)}
+                className="flex-1 py-2.5 rounded-xl border border-[rgb(var(--border))] text-sm text-muted hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRename}
+                className="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-semibold transition-colors"
+              >
+                Save &amp; Select
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

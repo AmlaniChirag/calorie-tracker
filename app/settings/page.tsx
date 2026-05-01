@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { calculateTDEE, calcMacroGoals, ACTIVITY_LABELS, type ActivityLevel } from "@/lib/tdee";
-import { Moon, Sun, RefreshCw, Trash2, Save } from "lucide-react";
+import { Moon, Sun, RefreshCw, Trash2, Save, Droplets } from "lucide-react";
 import Navbar from "@/components/Navbar";
 
 interface Profile {
@@ -19,6 +19,7 @@ interface Profile {
   fatGoalG: number | null;
   useCustomMacros: boolean;
   darkMode: boolean;
+  showWater: boolean;
 }
 
 const ACTIVITY_OPTIONS: ActivityLevel[] = ["sedentary", "light", "moderate", "active", "very_active"];
@@ -155,6 +156,23 @@ export default function SettingsPage() {
           <button onClick={() => handleDarkMode(true)}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border text-sm transition-colors ${form.darkMode ? "border-green-400 text-green-600" : "border-[rgb(var(--border))] text-muted"}`}>
             <Moon size={15} /> Dark
+          </button>
+        </div>
+
+        {/* Water tracker toggle */}
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-2">
+            <Droplets size={15} className="text-blue-400" />
+            <div>
+              <span className="text-sm">Water Tracker</span>
+              <p className="text-xs text-muted">Show on dashboard</p>
+            </div>
+          </div>
+          <button
+            onClick={() => set("showWater", !form.showWater)}
+            className={`w-12 h-6 rounded-full transition-colors relative ${form.showWater ? "bg-blue-400" : "bg-gray-300 dark:bg-zinc-600"}`}
+          >
+            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.showWater ? "translate-x-6" : "translate-x-0.5"}`} />
           </button>
         </div>
       </div>
