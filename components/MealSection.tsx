@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Plus, Trash2, ChevronDown } from "lucide-react";
+import { Plus, Trash2, ChevronDown, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface MealEntry {
@@ -21,30 +21,57 @@ interface Props {
   meals: MealEntry[];
   onAddClick: () => void;
   onDelete: (id: string) => void;
+  onCopyYesterday?: () => Promise<void>;
 }
 
-export default function MealSection({ type, label, emoji, meals, onAddClick, onDelete }: Props) {
+export default function MealSection({ type, label, emoji, meals, onAddClick, onDelete, onCopyYesterday }: Props) {
   const [open, setOpen] = useState(true);
+  const [copying, setCopying] = useState(false);
   const total = meals.reduce((s, m) => s + m.calories, 0);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // don't toggle open/close
+    if (!onCopyYesterday || copying) return;
+    setCopying(true);
+    try { await onCopyYesterday(); }
+    finally { setCopying(false); }
+  };
 
   return (
     <div className="surface rounded-2xl overflow-hidden">
-      <button
-        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors"
-        onClick={() => setOpen((o) => !o)}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-xl">{emoji}</span>
-          <div className="text-left">
-            <p className="font-semibold text-sm">{label}</p>
-            <p className="text-xs text-muted">{meals.length} item{meals.length !== 1 ? "s" : ""} · {total} kcal</p>
+      <div className="flex items-center">
+        <button
+          className="flex-1 flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors"
+          onClick={() => setOpen((o) => !o)}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">{emoji}</span>
+            <div className="text-left">
+              <p className="font-semibold text-sm">{label}</p>
+              <p className="text-xs text-muted">{meals.length} item{meals.length !== 1 ? "s" : ""} · {total} kcal</p>
+            </div>
           </div>
-        </div>
-        <ChevronDown
-          size={18}
-          className={cn("text-muted transition-transform duration-200", open ? "rotate-180" : "")}
-        />
-      </button>
+          <ChevronDown
+            size={18}
+            className={cn("text-muted transition-transform duration-200 mr-1", open ? "rotate-180" : "")}
+          />
+        </button>
+
+        {/* Per-meal copy yesterday */}
+        {onCopyYesterday && (
+          <button
+            onClick={handleCopy}
+            disabled={copying}
+            title={`Copy yesterday's ${label.toLowerCase()}`}
+            className="flex items-center gap-1 px-3 py-1.5 mr-2 rounded-lg text-xs font-medium text-muted hover:text-[rgb(var(--text))] hover:bg-gray-100 dark:hover:bg-white/[0.06] border border-[rgb(var(--border))] transition-all disabled:opacity-40 flex-shrink-0"
+          >
+            {copying
+              ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              : <Copy size={11} />}
+            <span className="hidden sm:inline">{copying ? "Copying…" : "Copy"}</span>
+          </button>
+        )}
+      </div>
 
       {open && (
         <div className="border-t border-[rgb(var(--border))]">

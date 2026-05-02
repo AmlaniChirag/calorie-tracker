@@ -139,40 +139,45 @@ export default function SettingsPage() {
       {/* Appearance */}
       <div className="surface rounded-2xl p-4 space-y-3">
         <h2 className="font-semibold text-sm">Appearance</h2>
-        <div className="flex items-center justify-between">
-          <span className="text-sm">Dark Mode</span>
+        {/* Dark Mode row */}
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm font-medium">Dark Mode</span>
           <button
             onClick={() => handleDarkMode(!form.darkMode)}
-            className={`w-12 h-6 rounded-full transition-colors relative ${form.darkMode ? "bg-green-500" : "bg-gray-300 dark:bg-zinc-600"}`}
+            aria-label="Toggle dark mode"
+            className={`relative flex-shrink-0 w-12 h-6 rounded-full overflow-hidden transition-colors duration-200 ${form.darkMode ? "bg-green-500" : "bg-gray-300 dark:bg-zinc-600"}`}
           >
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.darkMode ? "translate-x-6" : "translate-x-0.5"}`} />
-          </button>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={() => handleDarkMode(false)}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border text-sm transition-colors ${!form.darkMode ? "border-green-400 text-green-600" : "border-[rgb(var(--border))] text-muted"}`}>
-            <Sun size={15} /> Light
-          </button>
-          <button onClick={() => handleDarkMode(true)}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border text-sm transition-colors ${form.darkMode ? "border-green-400 text-green-600" : "border-[rgb(var(--border))] text-muted"}`}>
-            <Moon size={15} /> Dark
+            <span className={`absolute top-[3px] left-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200 ${form.darkMode ? "translate-x-[24px]" : "translate-x-0"}`} />
           </button>
         </div>
 
-        {/* Water tracker toggle */}
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2">
-            <Droplets size={15} className="text-blue-400" />
+        {/* Light / Dark selector */}
+        <div className="flex gap-2">
+          <button onClick={() => handleDarkMode(false)}
+            className={`flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl border text-sm font-medium transition-colors ${!form.darkMode ? "border-green-400 text-green-600 bg-green-50 dark:bg-green-950/30" : "border-[rgb(var(--border))] text-muted hover:border-[rgb(var(--text-muted))]"}`}>
+            <Sun size={14} /> Light
+          </button>
+          <button onClick={() => handleDarkMode(true)}
+            className={`flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl border text-sm font-medium transition-colors ${form.darkMode ? "border-green-400 text-green-600 bg-green-50 dark:bg-green-950/30" : "border-[rgb(var(--border))] text-muted hover:border-[rgb(var(--text-muted))]"}`}>
+            <Moon size={14} /> Dark
+          </button>
+        </div>
+
+        {/* Water Tracker toggle */}
+        <div className="flex items-center justify-between gap-4 pt-1 border-t border-[rgb(var(--border))]">
+          <div className="flex items-center gap-2.5">
+            <Droplets size={16} className="text-blue-400 flex-shrink-0" />
             <div>
-              <span className="text-sm">Water Tracker</span>
+              <p className="text-sm font-medium leading-tight">Water Tracker</p>
               <p className="text-xs text-muted">Show on dashboard</p>
             </div>
           </div>
           <button
             onClick={() => set("showWater", !form.showWater)}
-            className={`w-12 h-6 rounded-full transition-colors relative ${form.showWater ? "bg-blue-400" : "bg-gray-300 dark:bg-zinc-600"}`}
+            aria-label="Toggle water tracker"
+            className={`relative flex-shrink-0 w-12 h-6 rounded-full overflow-hidden transition-colors duration-200 ${form.showWater ? "bg-blue-400" : "bg-gray-300 dark:bg-zinc-600"}`}
           >
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.showWater ? "translate-x-6" : "translate-x-0.5"}`} />
+            <span className={`absolute top-[3px] left-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200 ${form.showWater ? "translate-x-[24px]" : "translate-x-0"}`} />
           </button>
         </div>
       </div>

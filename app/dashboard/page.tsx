@@ -135,7 +135,7 @@ export default function DashboardPage() {
     }
   }, [addToast]);
 
-  // ── Copy yesterday's meals ──
+  // ── Copy yesterday's meals (all) ──
   const handleCopyYesterday = async () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
@@ -151,7 +151,6 @@ export default function DashboardPage() {
         return;
       }
 
-      // Add all in parallel with optimistic updates
       await Promise.all(
         yesterdayMeals.map((m) =>
           handleAddMeal({
@@ -175,6 +174,44 @@ export default function DashboardPage() {
       setCopyingYesterday(false);
     }
   };
+
+  // ── Copy yesterday's meals for ONE meal type ──
+  const handleCopyYesterdayMeal = useCallback(async (mealType: string) => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+    try {
+      const res = await fetch(`/api/meals?date=${yesterdayStr}`);
+      const allYesterday: MealEntry[] = await res.json();
+      const filtered = allYesterday.filter((m) => m.mealType === mealType);
+
+      if (filtered.length === 0) {
+        addToast(`Nothing logged for ${mealType} yesterday.`, "info");
+        return;
+      }
+
+      await Promise.all(
+        filtered.map((m) =>
+          handleAddMeal({
+            mealType: m.mealType,
+            date: today,
+            foodName: m.foodName,
+            servingSize: m.servingSize,
+            calories: m.calories,
+            protein: m.protein,
+            carbs: m.carbs,
+            fat: m.fat,
+            fiber: 0,
+          })
+        )
+      );
+
+      addToast(`Copied ${filtered.length} item${filtered.length !== 1 ? "s" : ""} from yesterday's ${mealType}`, "success");
+    } catch {
+      addToast(`Couldn't copy yesterday's ${mealType}.`, "error");
+    }
+  }, [today, handleAddMeal, addToast]);
 
   const handleDeleteMeal = async (id: string) => {
     // Optimistic delete
@@ -324,6 +361,7 @@ export default function DashboardPage() {
             meals={meals.filter((m) => m.mealType === type)}
             onAddClick={() => setActiveMeal(type)}
             onDelete={handleDeleteMeal}
+            onCopyYesterday={() => handleCopyYesterdayMeal(type)}
           />
         ))}
       </div>
