@@ -132,7 +132,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-[rgb(var(--bg))]">
       <Navbar />
-      <main className="max-w-2xl mx-auto px-4 pb-24 pt-4 md:ml-52 md:pl-8">
+      <main className="max-w-2xl mx-auto px-4 pb-24 pt-4">
     <div className="space-y-5 animate-fade-in pt-2">
       <h1 className="text-xl font-bold">Settings</h1>
 

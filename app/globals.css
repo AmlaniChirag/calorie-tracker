@@ -3,64 +3,128 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── Minimal white theme (MFP-style) ── */
   :root {
-    --bg: 250 250 250;
-    --surface: 255 255 255;
-    --border: 229 231 235;
-    --text: 17 24 39;
-    --text-muted: 107 114 128;
-    --ring-track: 229 231 235;
+    --bg: 246 248 250;        /* Light gray page — cards pop against it */
+    --surface: 255 255 255;   /* Pure white cards */
+    --border: 226 232 240;    /* Subtle slate borders */
+    --text: 15 23 42;         /* Deep slate, near-black */
+    --text-muted: 100 116 139;/* Slate-500 */
+    --accent: 22 163 74;      /* Green-600 */
+    --accent-light: 240 253 244; /* Green-50 */
+    --ring-track: 226 232 240;
+    --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
   }
+
   .dark {
-    --bg: 10 10 10;
-    --surface: 24 24 27;
-    --border: 39 39 42;
-    --text: 250 250 250;
-    --text-muted: 161 161 170;
-    --ring-track: 39 39 42;
+    --bg: 9 11 17;            /* Deep navy-black */
+    --surface: 15 20 30;      /* Slightly lighter */
+    --border: 28 36 52;       /* Subtle dark borders */
+    --text: 241 245 249;      /* Slate-100 */
+    --text-muted: 148 163 184;/* Slate-400 */
+    --accent: 34 197 94;      /* Green-500 in dark */
+    --accent-light: 5 46 22;  /* Dark green tint */
+    --ring-track: 28 36 52;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4);
   }
+
   body {
-    @apply bg-[rgb(var(--bg))] text-[rgb(var(--text))] transition-colors duration-200;
+    @apply bg-[rgb(var(--bg))] text-[rgb(var(--text))] font-sans antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Tap highlight removal on mobile */
+  * { -webkit-tap-highlight-color: transparent; }
+
+  /* Safe area for bottom nav on iOS */
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }
 
 @layer utilities {
+  /* Card surface */
   .surface {
     background-color: rgb(var(--surface));
     border: 1px solid rgb(var(--border));
   }
+
+  /* Elevated card (subtle shadow, no border on light) */
+  .card {
+    background-color: rgb(var(--surface));
+    box-shadow: var(--shadow);
+    border-radius: 1rem;
+  }
+  .dark .card {
+    border: 1px solid rgb(var(--border));
+    box-shadow: none;
+  }
+
   .text-muted {
     color: rgb(var(--text-muted));
   }
+
+  /* Skeleton loader */
+  .skeleton {
+    background-color: rgb(var(--border));
+    border-radius: 0.5rem;
+    animation: skeleton 1.4s ease-in-out infinite;
+  }
+
+  /* Active press scale */
+  .press {
+    transition: transform 0.1s ease, opacity 0.1s ease;
+  }
+  .press:active {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
 }
 
-/* Smooth ring animation */
+/* ── Ring animation ── */
 .calorie-ring-progress {
-  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: stroke-dashoffset 1s cubic-bezier(0.34, 1.2, 0.64, 1);
   transform-origin: center;
   transform: rotate(-90deg);
 }
 
-/* Smooth bar animation */
+/* ── Macro bar ── */
 .macro-bar-fill {
-  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.7s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 
-/* Water glass fill */
+/* ── Water glass ── */
 .water-glass {
-  transition: background-color 0.3s ease, transform 0.15s ease;
+  transition: background-color 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
 }
 .water-glass:active {
-  transform: scale(0.92);
+  transform: scale(0.88);
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 3px; }
-
-/* Modal backdrop */
+/* ── Modal backdrop ── */
 .modal-backdrop {
-  backdrop-filter: blur(4px);
-  background-color: rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--border));
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--text-muted)); }
+
+/* ── Smooth number transitions ── */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* ── Bottom nav blur support check ── */
+@supports not (backdrop-filter: blur(8px)) {
+  .nav-blur { background-color: rgb(var(--surface)); }
 }

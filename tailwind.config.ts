@@ -9,6 +9,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+      },
       colors: {
         brand: {
           50: "#f0fdf4",
@@ -19,10 +22,13 @@ const config: Config = {
         },
       },
       animation: {
-        "ring-fill": "ring-fill 1s ease-out forwards",
-        "bar-fill": "bar-fill 0.8s ease-out forwards",
-        "fade-in": "fade-in 0.3s ease-out",
-        "slide-up": "slide-up 0.3s ease-out",
+        "ring-fill": "ring-fill 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+        "bar-fill": "bar-fill 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+        "fade-in": "fade-in 0.25s ease-out",
+        "slide-up": "slide-up 0.28s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "slide-down": "slide-down 0.22s ease-in",
+        "scale-in": "scale-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "skeleton": "skeleton 1.4s ease-in-out infinite",
       },
       keyframes: {
         "ring-fill": {
@@ -36,8 +42,20 @@ const config: Config = {
           to: { opacity: "1" },
         },
         "slide-up": {
-          from: { transform: "translateY(16px)", opacity: "0" },
+          from: { transform: "translateY(20px)", opacity: "0" },
           to: { transform: "translateY(0)", opacity: "1" },
+        },
+        "slide-down": {
+          from: { transform: "translateY(0)", opacity: "1" },
+          to: { transform: "translateY(20px)", opacity: "0" },
+        },
+        "scale-in": {
+          from: { transform: "scale(0.92)", opacity: "0" },
+          to: { transform: "scale(1)", opacity: "1" },
+        },
+        "skeleton": {
+          "0%, 100%": { opacity: "0.35" },
+          "50%": { opacity: "0.7" },
         },
       },
     },

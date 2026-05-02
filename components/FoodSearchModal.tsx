@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, Search, ScanLine, Plus, Trash2, Star, Clock, Zap } from "lucide-react";
 import { BUILT_IN_FOODS, searchFoods, type FoodItem } from "@/lib/foods";
+import { calcNutritionFromGrams } from "@/lib/nutrition";
+import { loadFromStorage, saveToStorage } from "@/lib/storage";
 import BarcodeScanner from "./BarcodeScanner";
 import TemplateTab, { type TemplateItem } from "./TemplateTab";
 
@@ -23,27 +25,17 @@ const UNIT_TO_G: Record<Unit, number> = {
 };
 const UNIT_OPTIONS: Unit[] = ["g", "ml", "piece", "cup", "tbsp", "tsp", "oz"];
 
-function calcNutrition(food: FoodItem, grams: number) {
-  const f = Math.max(0, grams) / 100;
-  return {
-    calories: Math.round(food.calories * f),
-    protein: Math.round(food.protein * f * 10) / 10,
-    carbs: Math.round(food.carbs * f * 10) / 10,
-    fat: Math.round(food.fat * f * 10) / 10,
-    fiber: Math.round(food.fiber * f * 10) / 10,
-  };
-}
+const calcNutrition = calcNutritionFromGrams;
 
 function getGrams(qty: number, unit: Unit, servingSizeG: number) {
   return unit === "piece" ? qty * servingSizeG : qty * UNIT_TO_G[unit];
 }
 
 function loadFavs(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem("favFoods_v1") || "[]")); }
-  catch { return new Set(); }
+  return new Set(loadFromStorage<string[]>("favFoods_v1", []));
 }
 function saveFavs(favs: Set<string>) {
-  localStorage.setItem("favFoods_v1", JSON.stringify([...favs]));
+  saveToStorage("favFoods_v1", [...favs]);
 }
 
 export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Props) {
@@ -75,10 +67,7 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
   // Load persistent data
   useEffect(() => {
     setFavorites(loadFavs());
-    try {
-      const raw = localStorage.getItem("recentFoods_v1");
-      if (raw) setRecentFoods(JSON.parse(raw));
-    } catch { /* silent */ }
+    setRecentFoods(loadFromStorage<FoodItem[]>("recentFoods_v1", []));
   }, []);
 
   const loadCustomFoods = useCallback(async () => {
@@ -145,10 +134,8 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
     try {
       await onAdd({ mealType, date, foodName: selected.name, servingSize: grams, ...nutrition });
       // Save to recents
-      try {
-        const updated = [selected, ...recentFoods.filter((f) => f.id !== selected.id)].slice(0, 8);
-        localStorage.setItem("recentFoods_v1", JSON.stringify(updated));
-      } catch { /* silent */ }
+      const updated = [selected, ...recentFoods.filter((f) => f.id !== selected.id)].slice(0, 8);
+      saveToStorage("recentFoods_v1", updated);
       onClose();
     } finally { setAdding(false); }
   };

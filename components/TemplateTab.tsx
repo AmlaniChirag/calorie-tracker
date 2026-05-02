@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, X, Check, Search, ChevronDown, ChevronUp } from "lucide-react";
 import { BUILT_IN_FOODS, searchFoods, type FoodItem } from "@/lib/foods";
+import { calcNutritionFromGrams } from "@/lib/nutrition";
+import { loadFromStorage, saveToStorage } from "@/lib/storage";
 
 export interface TemplateItem {
   foodName: string;
@@ -26,26 +28,9 @@ interface Props {
 }
 
 const STORAGE_KEY = "mealTemplates_v1";
-
-function loadTemplates(): MealTemplate[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
-  catch { return []; }
-}
-
-function save(templates: MealTemplate[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
-}
-
-function calcNutrition(food: FoodItem, grams: number) {
-  const f = grams / 100;
-  return {
-    calories: Math.round(food.calories * f),
-    protein: Math.round(food.protein * f * 10) / 10,
-    carbs: Math.round(food.carbs * f * 10) / 10,
-    fat: Math.round(food.fat * f * 10) / 10,
-    fiber: Math.round(food.fiber * f * 10) / 10,
-  };
-}
+const loadTemplates = () => loadFromStorage<MealTemplate[]>(STORAGE_KEY, []);
+const save = (t: MealTemplate[]) => saveToStorage(STORAGE_KEY, t);
+const calcNutrition = calcNutritionFromGrams;
 
 export default function TemplateTab({ customFoods, onApplyAll }: Props) {
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
