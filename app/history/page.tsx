@@ -75,7 +75,7 @@ export default function HistoryPage() {
   return (
     <div className="min-h-screen bg-[rgb(var(--bg))]">
       <Navbar />
-      <main className="max-w-2xl mx-auto px-4 pb-24 pt-4 md:ml-52 md:pl-8">
+      <main className="max-w-2xl mx-auto px-4 pb-24 pt-4">
         {loading ? (
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="w-10 h-10 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
