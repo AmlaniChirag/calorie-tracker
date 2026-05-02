@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const [activeMeal, setActiveMeal] = useState<string | null>(null);
   const [copyingYesterday, setCopyingYesterday] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [streak, setStreak] = useState(0);
 
   const addToast = useCallback((msg: string, type: Toast["type"] = "success") => {
     const id = ++toastCounter;
@@ -66,17 +67,19 @@ export default function DashboardPage() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [profileRes, mealsRes, exercisesRes, waterRes] = await Promise.all([
+      const [profileRes, mealsRes, exercisesRes, waterRes, streakRes] = await Promise.all([
         fetch("/api/profile"),
         fetch(`/api/meals?date=${today}`),
         fetch(`/api/exercise?date=${today}`),
         fetch(`/api/water?date=${today}`),
+        fetch("/api/streak"),
       ]);
-      const [p, m, e, w] = await Promise.all([
+      const [p, m, e, w, s] = await Promise.all([
         profileRes.json(),
         mealsRes.json(),
         exercisesRes.json(),
         waterRes.json(),
+        streakRes.json(),
       ]);
 
       if (!p.onboardingDone) { router.replace("/onboarding"); return; }
@@ -85,6 +88,7 @@ export default function DashboardPage() {
       setMeals(m);
       setExercises(e);
       setWaterGlasses(w.glasses ?? 0);
+      setStreak(s.streak ?? 0);
     } finally {
       setLoading(false);
     }
@@ -122,6 +126,8 @@ export default function DashboardPage() {
       const saved = await res.json();
       // Replace temp with real server entry
       setMeals((prev) => prev.map((m) => m.id === tempId ? saved : m));
+      // Refresh streak silently after first meal of the day
+      fetch("/api/streak").then((r) => r.json()).then((s) => setStreak(s.streak ?? 0)).catch(() => {});
     } catch {
       // Rollback on failure
       setMeals((prev) => prev.filter((m) => m.id !== tempId));
@@ -246,7 +252,15 @@ export default function DashboardPage() {
       {/* ── Date header + Copy yesterday ── */}
       <div className="flex items-center justify-between pt-2">
         <div>
-          <h1 className="text-xl font-bold tabular">Today</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tabular">Today</h1>
+            {streak > 0 && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs font-bold">
+                🔥 {streak}
+                <span className="font-normal hidden sm:inline">day{streak !== 1 ? "s" : ""}</span>
+              </span>
+            )}
+          </div>
           <p className="text-xs text-muted">
             {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
           </p>

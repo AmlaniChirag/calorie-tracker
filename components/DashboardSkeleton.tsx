@@ -4,7 +4,10 @@ export default function DashboardSkeleton() {
       {/* Date header */}
       <div className="flex items-center justify-between pt-2">
         <div className="space-y-1.5">
-          <div className="skeleton h-7 w-14 rounded-lg" />
+          <div className="flex items-center gap-2">
+            <div className="skeleton h-7 w-14 rounded-lg" />
+            <div className="skeleton h-5 w-12 rounded-full" />
+          </div>
           <div className="skeleton h-3.5 w-36 rounded-md" />
         </div>
         <div className="skeleton h-8 w-32 rounded-xl" />
