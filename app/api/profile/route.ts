@@ -6,15 +6,21 @@ export async function GET() {
   const { userId: clerkId } = await auth();
   if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const clerkUser = await currentUser();
-  const user = await getOrCreateUser(clerkId, clerkUser?.fullName ?? undefined);
-  return NextResponse.json(user);
+  try {
+    const clerkUser = await currentUser();
+    const user = await getOrCreateUser(clerkId, clerkUser?.fullName ?? undefined);
+    return NextResponse.json(user);
+  } catch (err) {
+    console.error("[/api/profile GET]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = await auth();
   if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  try {
   const body = await req.json();
   const clerkUser = await currentUser();
   const dbUser = await getOrCreateUser(clerkId, clerkUser?.fullName ?? undefined);
@@ -36,8 +42,13 @@ export async function POST(req: NextRequest) {
       darkMode: body.darkMode !== undefined ? Boolean(body.darkMode) : dbUser.darkMode,
       onboardingDone: body.onboardingDone !== undefined ? Boolean(body.onboardingDone) : dbUser.onboardingDone,
       showWater: body.showWater !== undefined ? Boolean(body.showWater) : dbUser.showWater,
+      showMicros: body.showMicros !== undefined ? Boolean(body.showMicros) : dbUser.showMicros,
     },
   });
 
   return NextResponse.json(updated);
+  } catch (err) {
+    console.error("[/api/profile POST]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

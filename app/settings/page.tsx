@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { calculateTDEE, calcMacroGoals, ACTIVITY_LABELS, type ActivityLevel } from "@/lib/tdee";
-import { Moon, Sun, RefreshCw, Trash2, Save, Droplets } from "lucide-react";
+import { Moon, Sun, RefreshCw, Trash2, Save, Droplets, FlaskConical } from "lucide-react";
 import Navbar from "@/components/Navbar";
 
 interface Profile {
@@ -20,6 +20,7 @@ interface Profile {
   useCustomMacros: boolean;
   darkMode: boolean;
   showWater: boolean;
+  showMicros: boolean;
 }
 
 const ACTIVITY_OPTIONS: ActivityLevel[] = ["sedentary", "light", "moderate", "active", "very_active"];
@@ -178,6 +179,24 @@ export default function SettingsPage() {
             className={`relative flex-shrink-0 w-12 h-6 rounded-full overflow-hidden transition-colors duration-200 ${form.showWater ? "bg-blue-400" : "bg-gray-300 dark:bg-zinc-600"}`}
           >
             <span className={`absolute top-[3px] left-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200 ${form.showWater ? "translate-x-[24px]" : "translate-x-0"}`} />
+          </button>
+        </div>
+
+        {/* Micronutrients toggle */}
+        <div className="flex items-center justify-between gap-4 pt-1 border-t border-[rgb(var(--border))]">
+          <div className="flex items-center gap-2.5">
+            <FlaskConical size={16} className="text-purple-400 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium leading-tight">Micronutrients</p>
+              <p className="text-xs text-muted">Iron, Calcium, Vitamins etc.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => set("showMicros", !form.showMicros)}
+            aria-label="Toggle micronutrients"
+            className={`relative flex-shrink-0 w-12 h-6 rounded-full overflow-hidden transition-colors duration-200 ${form.showMicros ? "bg-purple-500" : "bg-gray-300 dark:bg-zinc-600"}`}
+          >
+            <span className={`absolute top-[3px] left-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200 ${form.showMicros ? "translate-x-[24px]" : "translate-x-0"}`} />
           </button>
         </div>
       </div>

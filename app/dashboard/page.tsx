@@ -11,6 +11,7 @@ import MealSection, { type MealEntry } from "@/components/MealSection";
 import ExerciseLog, { type ExerciseEntry } from "@/components/ExerciseLog";
 import FoodSearchModal from "@/components/FoodSearchModal";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
+import MicronutrientsCard from "@/components/MicronutrientsCard";
 import { Copy, CheckCircle, AlertCircle } from "lucide-react";
 
 interface UserProfile {
@@ -22,6 +23,7 @@ interface UserProfile {
   onboardingDone: boolean;
   darkMode: boolean;
   showWater: boolean;
+  showMicros: boolean;
 }
 
 interface Toast {
@@ -349,6 +351,9 @@ export default function DashboardPage() {
 
       {/* ── Water Tracker ── */}
       {profile.showWater && <WaterTracker glasses={waterGlasses} onChange={handleWater} />}
+
+      {/* ── Micronutrients ── */}
+      {profile.showMicros && <MicronutrientsCard meals={meals} />}
 
       {/* ── Meal Sections ── */}
       <div className="space-y-3">

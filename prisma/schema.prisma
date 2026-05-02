@@ -24,6 +24,7 @@ model User {
   darkMode        Boolean      @default(false)
   onboardingDone  Boolean      @default(false)
   showWater       Boolean      @default(true)
+  showMicros      Boolean      @default(false)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   meals           Meal[]

@@ -28,6 +28,7 @@ export default function MealSection({ type, label, emoji, meals, onAddClick, onD
   const [open, setOpen] = useState(true);
   const [copying, setCopying] = useState(false);
   const total = meals.reduce((s, m) => s + m.calories, 0);
+  const totalProtein = meals.reduce((s, m) => s + m.protein, 0);
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation(); // don't toggle open/close
@@ -48,7 +49,12 @@ export default function MealSection({ type, label, emoji, meals, onAddClick, onD
             <span className="text-xl">{emoji}</span>
             <div className="text-left">
               <p className="font-semibold text-sm">{label}</p>
-              <p className="text-xs text-muted">{meals.length} item{meals.length !== 1 ? "s" : ""} · {total} kcal</p>
+              <p className="text-xs text-muted">
+                {meals.length} item{meals.length !== 1 ? "s" : ""} · {total} kcal
+                {meals.length > 0 && (
+                  <span className="text-blue-500 dark:text-blue-400 font-medium"> · {Math.round(totalProtein * 10) / 10}g P</span>
+                )}
+              </p>
             </div>
           </div>
           <ChevronDown
