@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, Search, ScanLine, Plus, Trash2, Star, Clock, Zap } from "lucide-react";
 import { BUILT_IN_FOODS, searchFoods, type FoodItem } from "@/lib/foods";
-import { calcNutritionFromGrams } from "@/lib/nutrition";
+import { calcNutritionFromGrams, getFoodBadges } from "@/lib/nutrition";
 import { loadFromStorage, saveToStorage } from "@/lib/storage";
 import BarcodeScanner from "./BarcodeScanner";
 import TemplateTab, { type TemplateItem } from "./TemplateTab";
@@ -376,7 +376,7 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
                         />
                       </button>
                       <button className="flex-1 flex items-center justify-between text-left" onClick={() => selectFood(food)}>
-                        <div>
+                        <div className="min-w-0 flex-1 pr-2">
                           <p className="text-sm font-medium flex items-center gap-1.5">
                             {!query && recentFoods.some((r) => r.id === food.id) && !favorites.has(food.id) && (
                               <Clock size={11} className="text-muted" />
@@ -384,8 +384,21 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
                             {food.name}
                           </p>
                           <p className="text-xs text-muted">{food.category} · {food.servingLabel}</p>
+                          {/* Food badges */}
+                          {(() => {
+                            const badges = getFoodBadges(food);
+                            return badges.length > 0 ? (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {badges.map((b) => (
+                                  <span key={b.label} className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${b.cls}`}>
+                                    {b.label}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
-                        <div className="text-right text-xs text-muted flex-shrink-0 ml-2">
+                        <div className="text-right text-xs text-muted flex-shrink-0">
                           <p className="font-semibold text-sm text-[rgb(var(--text))]">
                             {Math.round(food.calories * food.servingSizeG / 100)} kcal
                           </p>
@@ -417,9 +430,21 @@ export default function FoodSearchModal({ mealType, date, onAdd, onClose }: Prop
                   </div>
                 ) : customFoods.map((food) => (
                   <div key={food.id} className={`flex items-center justify-between px-4 py-3 border-b border-[rgb(var(--border))] hover:bg-gray-50 dark:hover:bg-zinc-800/60 ${selected?.id === food.id ? "bg-green-50 dark:bg-green-950/30" : ""}`}>
-                    <button className="text-left flex-1" onClick={() => selectFood(food)}>
+                    <button className="text-left flex-1 pr-2" onClick={() => selectFood(food)}>
                       <p className="text-sm font-medium">{food.name}</p>
                       <p className="text-xs text-muted">per 100g · P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                      {(() => {
+                        const badges = getFoodBadges(food);
+                        return badges.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {badges.map((b) => (
+                              <span key={b.label} className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${b.cls}`}>
+                                {b.label}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
                     </button>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold">{food.calories} kcal</span>
