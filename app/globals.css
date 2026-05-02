@@ -19,17 +19,17 @@
   }
 
   .dark {
-    --bg: 9 11 17;            /* Deep navy-black */
-    --surface: 15 20 30;      /* Slightly lighter */
-    --border: 28 36 52;       /* Subtle dark borders */
-    --text: 241 245 249;      /* Slate-100 */
-    --text-muted: 148 163 184;/* Slate-400 */
-    --accent: 34 197 94;      /* Green-500 in dark */
+    --bg: 17 24 39;           /* Deep navy (not pure black — less eyestrain) */
+    --surface: 25 35 56;      /* Clearly distinct from bg */
+    --border: 46 64 96;       /* Visible borders without being harsh */
+    --text: 234 240 252;      /* Near-white with slight blue warmth */
+    --text-muted: 155 172 200;/* Readable muted text */
+    --accent: 34 197 94;      /* Green-500 */
     --accent-light: 5 46 22;  /* Dark green tint */
-    --ring-track: 28 36 52;
-    --shadow: 0 1px 3px rgba(0,0,0,0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.3);
-    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4);
+    --ring-track: 46 64 96;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5);
   }
 
   body {
