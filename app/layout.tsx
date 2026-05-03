@@ -43,6 +43,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <ClerkProvider publishableKey={publishableKey}>
       <html lang="en" suppressHydrationWarning className={inter.variable}>
+        <head>
+          {/* Capture beforeinstallprompt BEFORE React hydrates — event fires early */}
+          <script dangerouslySetInnerHTML={{ __html: `
+            window.__pwaPrompt = null;
+            window.addEventListener('beforeinstallprompt', function(e) {
+              e.preventDefault();
+              window.__pwaPrompt = e;
+            });
+          `}} />
+        </head>
         <body>
           {children}
           <InstallPrompt />
