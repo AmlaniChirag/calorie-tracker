@@ -7,22 +7,23 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISS_KEY = "pwaPromptDismissed_v2"; // bump version to reset prior dismisses
-const DISMISS_TTL = 7 * 86400_000; // 7 days
+declare global {
+  interface Window {
+    __pwaPrompt?: BeforeInstallPromptEvent;
+  }
+}
 
-function isDismissed() {
+const DISMISS_KEY = "pwaPromptDismissed_v3";
+const DISMISS_TTL = 7 * 86400_000;
+
+function wasDismissed() {
   try {
     const ts = localStorage.getItem(DISMISS_KEY);
     return !!ts && Date.now() - Number(ts) < DISMISS_TTL;
   } catch { return false; }
 }
-
-function setDismissed() {
+function markDismissed() {
   try { localStorage.setItem(DISMISS_KEY, Date.now().toString()); } catch { /* */ }
-}
-
-function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as Window & { MSStream?: unknown }).MSStream;
 }
 
 function isStandalone() {
@@ -32,61 +33,64 @@ function isStandalone() {
   );
 }
 
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+    !(window as Window & { MSStream?: unknown }).MSStream;
+}
+
+function isAndroid() {
+  return /Android/.test(navigator.userAgent);
+}
+
 export default function InstallPrompt() {
-  const [androidPrompt, setAndroidPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showIOS, setShowIOS] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [nativePrompt, setNativePrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [platform, setPlatform] = useState<"ios" | "android" | "other" | null>(null);
 
   useEffect(() => {
-    if (isStandalone() || isDismissed()) return;
+    // Already installed or dismissed — do nothing
+    if (isStandalone() || wasDismissed()) return;
 
-    if (isIOS()) {
-      // iOS Safari: no beforeinstallprompt — show manual instructions
-      setShowIOS(true);
-      setVisible(true);
-      return;
-    }
+    const plt = isIOS() ? "ios" : isAndroid() ? "android" : "other";
+    setPlatform(plt);
 
-    // Android/Chrome: event may have already fired before React hydrated.
-    // Inline script in layout.tsx captures it on window.__pwaPrompt.
-    const w = window as Window & { __pwaPrompt?: BeforeInstallPromptEvent };
-    if (w.__pwaPrompt) {
-      setAndroidPrompt(w.__pwaPrompt);
-      setVisible(true);
-      return;
-    }
+    // Grab stored native prompt if Chrome already fired it
+    if (window.__pwaPrompt) setNativePrompt(window.__pwaPrompt);
 
-    // Fallback: listen in case it fires after hydration
+    // Also listen for late fires
     const handler = (e: Event) => {
       e.preventDefault();
-      setAndroidPrompt(e as BeforeInstallPromptEvent);
-      setVisible(true);
+      setNativePrompt(e as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+
+    // Show banner after 3 s regardless — don't gate on event
+    const timer = setTimeout(() => setVisible(true), 3000);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      clearTimeout(timer);
+    };
   }, []);
 
-  const handleAndroidInstall = async () => {
-    if (!androidPrompt) return;
-    await androidPrompt.prompt();
-    const { outcome } = await androidPrompt.userChoice;
-    if (outcome === "dismissed") setDismissed();
+  const handleNativeInstall = async () => {
+    if (!nativePrompt) return;
+    await nativePrompt.prompt();
+    const { outcome } = await nativePrompt.userChoice;
+    if (outcome === "dismissed") markDismissed();
     setVisible(false);
-    setAndroidPrompt(null);
   };
 
   const handleDismiss = () => {
-    setDismissed();
+    markDismissed();
     setVisible(false);
   };
 
-  if (!visible) return null;
-  if (!showIOS && !androidPrompt) return null;
+  if (!visible || !platform) return null;
 
   return (
     <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-6 md:w-80 z-50 surface rounded-2xl p-4 shadow-2xl border border-[rgb(var(--border))] animate-slide-up">
       <div className="flex items-start gap-3">
-        {/* Icon */}
         <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center flex-shrink-0 text-2xl shadow">
           🥗
         </div>
@@ -94,37 +98,50 @@ export default function InstallPrompt() {
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm">Install CalTrack</p>
 
-          {showIOS ? (
+          {/* iOS — always manual */}
+          {platform === "ios" && (
             <>
-              <p className="text-xs text-muted mt-0.5 leading-relaxed">
-                Tap the <Share size={11} className="inline mx-0.5 -mt-0.5" /> Share button
-                at the bottom of Safari, then choose{" "}
-                <span className="font-medium text-[rgb(var(--text))]">&ldquo;Add to Home Screen&rdquo;</span>.
+              <p className="text-xs text-muted mt-1 leading-relaxed">
+                Tap <Share size={11} className="inline mx-0.5 -mt-0.5" /> at the bottom of
+                Safari, then <span className="font-semibold text-[rgb(var(--text))]">Add to Home Screen</span>.
               </p>
-              <button
-                onClick={handleDismiss}
-                className="mt-3 w-full py-2 rounded-xl border border-[rgb(var(--border))] text-xs text-muted hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
-              >
+              <button onClick={handleDismiss}
+                className="mt-3 w-full py-2 rounded-xl border border-[rgb(var(--border))] text-xs text-muted hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                 Got it
               </button>
             </>
-          ) : (
+          )}
+
+          {/* Android — native prompt if available, else manual menu steps */}
+          {(platform === "android" || platform === "other") && (
             <>
-              <p className="text-xs text-muted mt-0.5">Add to home screen — no browser bar, works offline</p>
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={handleAndroidInstall}
-                  className="flex-1 py-2 rounded-xl bg-green-500 hover:bg-green-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
-                >
-                  <Download size={13} /> Install
-                </button>
-                <button
-                  onClick={handleDismiss}
-                  className="px-3 py-2 rounded-xl border border-[rgb(var(--border))] text-xs text-muted hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  Later
-                </button>
-              </div>
+              {nativePrompt ? (
+                <>
+                  <p className="text-xs text-muted mt-1">Add to home screen — no browser bar, works offline</p>
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={handleNativeInstall}
+                      className="flex-1 py-2 rounded-xl bg-green-500 hover:bg-green-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
+                      <Download size={13} /> Install
+                    </button>
+                    <button onClick={handleDismiss}
+                      className="px-3 py-2 rounded-xl border border-[rgb(var(--border))] text-xs text-muted transition-colors">
+                      Later
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-muted mt-1 leading-relaxed">
+                    Tap <span className="font-semibold text-[rgb(var(--text))]">⋮ menu</span> in
+                    Chrome → <span className="font-semibold text-[rgb(var(--text))]">Add to Home screen</span>{" "}
+                    to install as an app.
+                  </p>
+                  <button onClick={handleDismiss}
+                    className="mt-3 w-full py-2 rounded-xl border border-[rgb(var(--border))] text-xs text-muted hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                    Got it
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
