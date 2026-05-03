@@ -47,7 +47,16 @@ export default function InstallPrompt() {
       return;
     }
 
-    // Android Chrome / other Chromium: wait for native event
+    // Android/Chrome: event may have already fired before React hydrated.
+    // Inline script in layout.tsx captures it on window.__pwaPrompt.
+    const w = window as Window & { __pwaPrompt?: BeforeInstallPromptEvent };
+    if (w.__pwaPrompt) {
+      setAndroidPrompt(w.__pwaPrompt);
+      setVisible(true);
+      return;
+    }
+
+    // Fallback: listen in case it fires after hydration
     const handler = (e: Event) => {
       e.preventDefault();
       setAndroidPrompt(e as BeforeInstallPromptEvent);
