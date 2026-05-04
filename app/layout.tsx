@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "CalTrack — Calorie & Macro Tracker",
+  title: "CalTrack - Calorie & Macro Tracker",
   description: "Track calories, macros, water, and workouts. Built for Indian & global food lovers.",
   manifest: "/manifest.json",
   appleWebApp: {
@@ -44,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider publishableKey={publishableKey}>
       <html lang="en" suppressHydrationWarning className={inter.variable}>
         <head>
-          {/* Capture beforeinstallprompt BEFORE React hydrates — event fires early */}
+          {/* Capture beforeinstallprompt before React hydrates; Chrome may fire it early. */}
           <script dangerouslySetInnerHTML={{ __html: `
             window.__pwaPrompt = null;
             window.addEventListener('beforeinstallprompt', function(e) {
