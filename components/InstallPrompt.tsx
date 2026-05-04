@@ -13,7 +13,7 @@ declare global {
   }
 }
 
-const DISMISS_KEY = "pwaPromptDismissed_v3";
+const DISMISS_KEY = "pwaPromptDismissed_v4";
 const DISMISS_TTL = 7 * 86400_000;
 
 function wasDismissed() {
@@ -22,6 +22,7 @@ function wasDismissed() {
     return !!ts && Date.now() - Number(ts) < DISMISS_TTL;
   } catch { return false; }
 }
+
 function markDismissed() {
   try { localStorage.setItem(DISMISS_KEY, Date.now().toString()); } catch { /* */ }
 }
@@ -48,23 +49,19 @@ export default function InstallPrompt() {
   const [platform, setPlatform] = useState<"ios" | "android" | "other" | null>(null);
 
   useEffect(() => {
-    // Already installed or dismissed — do nothing
     if (isStandalone() || wasDismissed()) return;
 
     const plt = isIOS() ? "ios" : isAndroid() ? "android" : "other";
     setPlatform(plt);
 
-    // Grab stored native prompt if Chrome already fired it
     if (window.__pwaPrompt) setNativePrompt(window.__pwaPrompt);
 
-    // Also listen for late fires
     const handler = (e: Event) => {
       e.preventDefault();
       setNativePrompt(e as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", handler);
 
-    // Show banner after 3 s regardless — don't gate on event
     const timer = setTimeout(() => setVisible(true), 3000);
 
     return () => {
@@ -91,14 +88,13 @@ export default function InstallPrompt() {
   return (
     <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-6 md:w-80 z-50 surface rounded-2xl p-4 shadow-2xl border border-[rgb(var(--border))] animate-slide-up">
       <div className="flex items-start gap-3">
-        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center flex-shrink-0 text-2xl shadow">
-          🥗
+        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center flex-shrink-0 text-lg font-bold text-white shadow">
+          C
         </div>
 
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm">Install CalTrack</p>
 
-          {/* iOS — always manual */}
           {platform === "ios" && (
             <>
               <p className="text-xs text-muted mt-1 leading-relaxed">
@@ -112,12 +108,11 @@ export default function InstallPrompt() {
             </>
           )}
 
-          {/* Android — native prompt if available, else manual menu steps */}
           {(platform === "android" || platform === "other") && (
             <>
               {nativePrompt ? (
                 <>
-                  <p className="text-xs text-muted mt-1">Add to home screen — no browser bar, works offline</p>
+                  <p className="text-xs text-muted mt-1">Add to home screen. No browser bar, works offline.</p>
                   <div className="flex gap-2 mt-3">
                     <button onClick={handleNativeInstall}
                       className="flex-1 py-2 rounded-xl bg-green-500 hover:bg-green-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
@@ -132,8 +127,9 @@ export default function InstallPrompt() {
               ) : (
                 <>
                   <p className="text-xs text-muted mt-1 leading-relaxed">
-                    Tap <span className="font-semibold text-[rgb(var(--text))]">⋮ menu</span> in
-                    Chrome → <span className="font-semibold text-[rgb(var(--text))]">Add to Home screen</span>{" "}
+                    Tap <span className="font-semibold text-[rgb(var(--text))]">Chrome menu</span>, then{" "}
+                    <span className="font-semibold text-[rgb(var(--text))]">Install app</span> or{" "}
+                    <span className="font-semibold text-[rgb(var(--text))]">Add to Home screen</span>{" "}
                     to install as an app.
                   </p>
                   <button onClick={handleDismiss}

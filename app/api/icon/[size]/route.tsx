@@ -25,7 +25,17 @@ export async function GET(
           borderRadius: radius,
         }}
       >
-        <span style={{ fontSize, lineHeight: 1 }}>🥗</span>
+        <span
+          style={{
+            color: "white",
+            fontSize,
+            fontWeight: 800,
+            fontFamily: "Arial, sans-serif",
+            lineHeight: 1,
+          }}
+        >
+          C
+        </span>
       </div>
     ),
     {
